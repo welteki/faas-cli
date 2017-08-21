@@ -127,7 +127,10 @@ func main() {
 				function.Name = k
 				fmt.Printf("Deleting: %s.\n", function.Name)
 
-				proxy.DeleteFunction(services.Provider.GatewayURL, function.Name)
+				deleteError := proxy.DeleteFunction(services.Provider.GatewayURL, function.Name)
+				if deleteError != nil {
+					log.Println(deleteError.Error())
+				}
 			}
 		} else {
 			if len(functionName) == 0 {
@@ -135,7 +138,10 @@ func main() {
 				return
 			}
 			fmt.Printf("Deleting: %s.\n", functionName)
-			proxy.DeleteFunction(gateway, functionName)
+			deleteError := proxy.DeleteFunction(gateway, functionName)
+			if deleteError != nil {
+				log.Println(deleteError.Error())
+			}
 		}
 
 		break

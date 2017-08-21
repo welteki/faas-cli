@@ -1,3 +1,6 @@
+// Copyright (c) Alex Ellis 2017. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
 package proxy
 
 import (
@@ -11,9 +14,13 @@ import (
 )
 
 // DeleteFunction delete a function from the FaaS server
-func DeleteFunction(gateway string, functionName string) {
+func DeleteFunction(gateway string, functionName string) error {
 	delReq := requests.DeleteFunctionRequest{FunctionName: functionName}
-	reqBytes, _ := json.Marshal(&delReq)
+	reqBytes, marshalErr := json.Marshal(&delReq)
+	if marshalErr != nil {
+		return marshalErr
+	}
+
 	reader := bytes.NewReader(reqBytes)
 
 	c := http.Client{}
@@ -21,8 +28,7 @@ func DeleteFunction(gateway string, functionName string) {
 	req.Header.Set("Content-Type", "application/json")
 	delRes, delErr := c.Do(req)
 	if delErr != nil {
-		fmt.Printf("Error removing existing function: %s, gateway=%s, functionName=%s\n", delErr.Error(), gateway, functionName)
-		return
+		return fmt.Errorf("error removing existing function: %s, gateway=%s, functionName=%s", delErr.Error(), gateway, functionName)
 	}
 
 	if delRes.Body != nil {
@@ -37,7 +43,8 @@ func DeleteFunction(gateway string, functionName string) {
 	default:
 		bytesOut, err := ioutil.ReadAll(delRes.Body)
 		if err == nil {
-			fmt.Println("Server returned unexpected status code", delRes.StatusCode, string(bytesOut))
+			return fmt.Errorf("server returned unexpected status code: %d.\n Response: %s", delRes.StatusCode, string(bytesOut))
 		}
 	}
+	return nil
 }
