@@ -1,4 +1,4 @@
-FROM golang:1.7.5
+FROM golang:1.8.3 as build
 
 WORKDIR /go/src/github.com/alexellis/faas-cli
 COPY . .
@@ -11,7 +11,7 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 
-COPY --from=0 /go/src/github.com/alexellis/faas-cli/faas-cli    .
+COPY --from=build /go/src/github.com/alexellis/faas-cli/faas-cli    .
 
 CMD ["./faas-cli"]
 
