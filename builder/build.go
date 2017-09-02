@@ -72,7 +72,7 @@ func createBuildTemplate(functionName string, handler string, language string) s
 	copyFiles("./template/"+language, tempPath, true)
 
 	// Overlay in user-function
-	copyFiles(handler, tempPath+"function/", false)
+	copyFiles(handler, tempPath+"function/", true)
 
 	return tempPath
 }
@@ -94,6 +94,7 @@ func copyFiles(src string, destination string, recursive bool) {
 
 			//make new destination dir
 			newDir := destination + file.Name() + "/"
+			fmt.Println("Let's create: " + file.Name() + " at - " + newDir)
 			if !pathExists(newDir) {
 
 				newDirErr := os.Mkdir(newDir, 0700)
