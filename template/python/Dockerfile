@@ -1,6 +1,6 @@
 FROM python:2.7-alpine
 
-RUN adduser app -D
+RUN addgroup -S app && adduser -S -g app app
 
 # Alternatively use ADD https:// (which will not be cached by Docker builder)
 RUN apk --no-cache add curl \ 
@@ -27,7 +27,9 @@ RUN pip install -r requirements.txt
 
 WORKDIR /home/app
 
-RUN chown -R app ./
+RUN chown -R app:app ./ \
+    && chmod 777 /tmp/
+
 USER app
 
 ENV fprocess="python index.py"
