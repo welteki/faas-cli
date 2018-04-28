@@ -134,7 +134,18 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(services.Functions) > 0 {
-		build(&services, parallel, shrinkwrap)
+
+		errs := build(&services, parallel, shrinkwrap)
+
+		if len(errs) > 0 {
+			// errCombined := fmt.Sprintf("%d error(s) while building functions: \n", len(errs))
+			// for _, err := range errs {
+			// 	errCombined = errCombined + fmt.Sprintf("- [%s]: %s\n", err.Function, err.Msg)
+			// }
+
+			// return fmt.Errorf("%s\nSee the build logs for more information.", errCombined)
+			return fmt.Errorf("one or more function(s) failed to build, see logs")
+		}
 
 	} else {
 		if len(image) == 0 {
@@ -152,27 +163,39 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func build(services *stack.Services, queueDepth int, shrinkwrap bool) {
+func build(services *stack.Services, queueDepth int, shrinkwrap bool) []stack.BuildError {
 	wg := sync.WaitGroup{}
 
 	workChannel := make(chan stack.Function)
+	errorChannel := make(chan stack.BuildError)
+	complete := make(chan bool, 1)
 
 	for i := 0; i < queueDepth; i++ {
+
 		go func(index int) {
 			wg.Add(1)
+
 			for function := range workChannel {
 				fmt.Printf(aec.YellowF.Apply("[%d] > Building %s.\n"), index, function.Name)
 				if len(function.Language) == 0 {
 					fmt.Println("Please provide a valid language for your function.")
 				} else {
-					builder.BuildImage(function.Image, function.Handler, function.Name, function.Language, nocache, squash, shrinkwrap, buildArgMap)
+					if err := builder.BuildImage(function.Image, function.Handler, function.Name, function.Language, nocache, squash, shrinkwrap, buildArgMap); err != nil {
+						errorChannel <- stack.BuildError{
+							Function: function.Name,
+							Msg:      err,
+						}
+					}
 				}
+
 				fmt.Printf(aec.YellowF.Apply("[%d] < Building %s done.\n"), index, function.Name)
 			}
 
 			fmt.Printf(aec.YellowF.Apply("[%d] worker done.\n"), index)
+
 			wg.Done()
 		}(i)
+
 	}
 
 	for k, function := range services.Functions {
@@ -185,9 +208,22 @@ func build(services *stack.Services, queueDepth int, shrinkwrap bool) {
 	}
 
 	close(workChannel)
+	var errs []stack.BuildError
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(complete)
+	}()
 
+	select {
+	case <-complete:
+		close(errorChannel)
+		break
+	case err := <-errorChannel:
+		errs = append(errs, err)
+	}
+
+	return errs
 }
 
 // PullTemplates pulls templates from Github from the master zip download file.

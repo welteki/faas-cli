@@ -13,7 +13,7 @@ import (
 )
 
 // ExecCommand run a system command
-func ExecCommand(tempPath string, builder []string) {
+func ExecCommand(tempPath string, builder []string) error {
 	targetCmd := exec.Command(builder[0], builder[1:]...)
 	targetCmd.Dir = tempPath
 	targetCmd.Stdout = os.Stdout
@@ -22,6 +22,8 @@ func ExecCommand(tempPath string, builder []string) {
 	err := targetCmd.Wait()
 	if err != nil {
 		errString := fmt.Sprintf("ERROR - Could not execute command: %s", builder)
-		log.Fatalf(aec.RedF.Apply(errString))
+		log.Printf(aec.RedF.Apply(errString))
 	}
+
+	return err
 }

@@ -13,7 +13,7 @@ import (
 )
 
 // BuildImage construct Docker image from function parameters
-func BuildImage(image string, handler string, functionName string, language string, nocache bool, squash bool, shrinkwrap bool, buildArgMap map[string]string) {
+func BuildImage(image string, handler string, functionName string, language string, nocache bool, squash bool, shrinkwrap bool, buildArgMap map[string]string) error {
 
 	if stack.IsValidTemplate(language) {
 
@@ -23,7 +23,7 @@ func BuildImage(image string, handler string, functionName string, language stri
 			if shrinkwrap {
 				fmt.Printf("Nothing to do for: %s.\n", functionName)
 
-				return
+				return nil
 			}
 
 			tempPath = handler
@@ -31,7 +31,7 @@ func BuildImage(image string, handler string, functionName string, language stri
 				fmt.Printf("Unable to build %s, %s is an invalid path\n", image, handler)
 				fmt.Printf("Image: %s not built.\n", image)
 
-				return
+				return nil
 			}
 			fmt.Printf("Building: %s with Dockerfile. Please wait..\n", image)
 
@@ -41,7 +41,7 @@ func BuildImage(image string, handler string, functionName string, language stri
 				fmt.Printf("Unable to build %s, %s is an invalid path\n", image, handler)
 				fmt.Printf("Image: %s not built.\n", image)
 
-				return
+				return nil
 			}
 			tempPath = createBuildTemplate(functionName, handler, language)
 			fmt.Printf("Building: %s with %s template. Please wait..\n", image, language)
@@ -49,18 +49,23 @@ func BuildImage(image string, handler string, functionName string, language stri
 			if shrinkwrap {
 				fmt.Printf("%s shrink-wrapped to %s\n", functionName, tempPath)
 
-				return
+				return nil
 			}
 		}
 
 		flagStr := buildFlagString(nocache, squash, os.Getenv("http_proxy"), os.Getenv("https_proxy"), buildArgMap)
 		builder := strings.Split(fmt.Sprintf("docker build %s-t %s .", flagStr, image), " ")
-		ExecCommand(tempPath, builder)
+		if err := ExecCommand(tempPath, builder); err != nil {
+			return err
+		}
+
 		fmt.Printf("Image: %s built.\n", image)
 
 	} else {
 		log.Fatalf("Language template: %s not supported. Build a custom Dockerfile instead.", language)
 	}
+
+	return nil
 }
 
 // createBuildTemplate creates temporary build folder to perform a Docker build with language template
