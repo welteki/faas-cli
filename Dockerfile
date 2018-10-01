@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.9.2 as builder
+FROM golang:1.10.4 as builder
 
 WORKDIR /usr/bin/
 RUN curl -sLSf https://raw.githubusercontent.com/alexellis/license-check/master/get.sh | sh
@@ -22,7 +22,7 @@ RUN go test $(go list ./... | grep -v /vendor/ | grep -v /template/|grep -v /bui
     -a -installsuffix cgo -o faas-cli
 
 # Release stage
-FROM alpine:3.7
+FROM alpine:3.8
 
 RUN apk --no-cache add ca-certificates git
 
