@@ -32,7 +32,8 @@ func init() {
 	publishCmd.Flags().BoolVar(&nocache, "no-cache", false, "Do not use Docker's build cache")
 	publishCmd.Flags().BoolVar(&squash, "squash", false, `Use Docker's squash flag for smaller images [experimental] `)
 	publishCmd.Flags().IntVar(&parallel, "parallel", 1, "Build in parallel to depth specified.")
-	publishCmd.Flags().BoolVar(&shrinkwrap, "shrinkwrap", false, "Just write files to ./build/ folder for shrink-wrapping")
+	publishCmd.Flags().BoolVar(&shrinkwrap, "shrinkwrap", false, "Just write files to out-path for shrink-wrapping")
+	publishCmd.Flags().StringVar(&outPath, "out-path", "./build", "Path where function build context is created")
 	publishCmd.Flags().StringArrayVarP(&buildArgs, "build-arg", "b", []string{}, "Add a build-arg for Docker (KEY=VALUE)")
 	publishCmd.Flags().StringArrayVarP(&buildOptions, "build-option", "o", []string{}, "Set a build option, e.g. dev")
 	publishCmd.Flags().Var(&tagFormat, "tag", "Override latest tag on function Docker image, accepts 'latest', 'sha', 'branch', or 'describe'")
@@ -205,6 +206,7 @@ func publish(services *stack.Services, queueDepth int, shrinkwrap, quietBuild bo
 						buildLabelMap,
 						quietBuild,
 						combinedExtraPaths,
+						outPath,
 						platforms,
 						extraTags,
 					)
