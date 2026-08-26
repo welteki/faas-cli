@@ -11,22 +11,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    concurrency: 
+    concurrency:
       group: ${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - 
-        uses: actions/checkout@master
+      - uses: actions/checkout@master
         with:
             fetch-depth: 1
-      -
-        name: Set up QEMU
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
-      - 
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-      - 
-        name: Local docker build (non-root image)
+      - name: Local docker build (non-root image)
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -40,8 +36,7 @@ jobs:
             REPO_URL=https://github.com/openfaas/faas-cli
           load: true
           tags: openfaas/faas-cli:${{ github.sha }}
-      -
-        name: Test for multi-arch build
+      - name: Test for multi-arch build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -55,8 +50,7 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
             REPO_URL=https://github.com/openfaas/faas-cli
           tags: openfaas/faas-cli:${{ github.sha }}
-      -
-        name: Test the redistributable binaries cross-compile
+      - name: Test the redistributable binaries cross-compile
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -70,19 +64,15 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
             REPO_URL=https://github.com/openfaas/faas-cli
           tags: openfaas/faas-cli-redist:${{ github.sha }}
-      -
-        name: Copy binary to host
+      - name: Copy binary to host
         run: |
           docker create --name faas-cli openfaas/faas-cli:${{ github.sha }} && \
           mkdir -p ./bin && \
           docker cp faas-cli:/usr/bin/faas-cli ./bin && \
           docker rm -f faas-cli
-      - 
-        name: Build samples
+      - name: Build samples
         run: ./build_samples.sh
-      - 
-        name: Test version
+      - name: Test version
         run: ./test/version.sh ./bin/faas-cli
-      - 
-        name: Test the cli and the function behaviour
+      - name: Test the cli and the function behaviour
         run: make test-templating
