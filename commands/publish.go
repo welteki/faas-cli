@@ -89,23 +89,41 @@ var publishCmd = &cobra.Command{
 	Short: "Builds and pushes multi-arch OpenFaaS container images",
 	Long: `Builds and pushes multi-arch OpenFaaS container images using Docker buildx.
 Most users will want faas-cli build or faas-cli up for development and testing.
-This command is designed to make releasing and publishing multi-arch container 
+This command is designed to make releasing and publishing multi-arch container
 images easier.
 
-A stack.yaml file is required, and any images that are built will not be 
-available in the local Docker library. This is due to technical constraints in 
-Docker and buildx. You must use a multi-arch template to use this command with 
+A stack.yaml file is required, and any images that are built will not be
+available in the local Docker library. This is due to technical constraints in
+Docker and buildx. You must use a multi-arch template to use this command with
 correctly configured TARGETPLATFORM and BUILDPLATFORM arguments.
 
 See also: faas-cli build`,
-	Example: `  faas-cli publish --platforms linux/amd64,linux/arm64
+	Example: `  # Publish multi-arch images, in parallel
+  faas-cli publish --platforms linux/amd64,linux/arm64 \
+    --parallel 4
+
+  # Publish a single image for a single platform image
   faas-cli publish --platforms linux/arm64 --filter webhook-arm
+
+  # Publish with custom build arguments
   faas-cli publish -f custom.yml --no-cache --build-arg NPM_VERSION=0.2.2
+
+  # Publish with a custom build option
   faas-cli publish --build-option dev
-  faas-cli publish --tag sha
-  faas-cli publish --tag digest
+
+  # Calculate a dynamic tag from commit SHA or digest of function's contents
+  faas-cli publish --tag sha|digest
+
+  # Setup QEMU on the Docker instance
   faas-cli publish --reset-qemu
-  faas-cli publish --remote-builder http://127.0.0.1:8081 --payload-secret /var/openfaas/secrets/payload-secret -f stack.yml`,
+
+  # Use the Function Builder API (in-cluster) to publish the image
+  faas-cli publish --remote-builder http://127.0.0.1:8081 \
+    --payload-secret /var/openfaas/secrets/payload-secret
+
+  # Use the Function Builder API and override the platform
+  faas-cli publish --remote-builder URL \
+    --platform linux/arm64`,
 	PreRunE: preRunPublish,
 	RunE:    runPublish,
 }
