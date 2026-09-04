@@ -44,6 +44,7 @@ func preRunSecretRemoveCmd(cmd *cobra.Command, args []string) error {
 }
 
 func runSecretRemove(cmd *cobra.Command, args []string) error {
+	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
 	var gatewayAddress string
 	gatewayAddress = getGatewayURL(gateway, defaultGateway, "", os.Getenv(openFaaSURLEnvironment))
 
@@ -53,7 +54,7 @@ func runSecretRemove(cmd *cobra.Command, args []string) error {
 
 	secret := types.Secret{
 		Name:      args[0],
-		Namespace: functionNamespace,
+		Namespace: namespace,
 	}
 
 	cliAuth, err := proxy.NewCLIAuth(token, gatewayAddress)

@@ -128,16 +128,17 @@ func runReadyCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		ctx := context.Background()
+		namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
 
 		for i := 0; i < attempts; i++ {
 			suffix := ""
-			if len(functionNamespace) > 0 {
-				suffix = "." + functionNamespace
+			if len(namespace) > 0 {
+				suffix = "." + namespace
 			}
 
 			fmt.Printf("[%d/%d] Waiting for function %s%s\n", i+1, attempts, functionName, suffix)
 
-			function, err := cliClient.GetFunctionInfo(ctx, functionName, functionNamespace)
+			function, err := cliClient.GetFunctionInfo(ctx, functionName, namespace)
 			if err != nil {
 				fmt.Printf("[%d/%d] Error getting function info: %s\n", i+1, attempts, err.Error())
 			}

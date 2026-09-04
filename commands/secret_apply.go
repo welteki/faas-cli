@@ -42,6 +42,7 @@ func init() {
 }
 
 func runSecretApply(cmd *cobra.Command, args []string) error {
+	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
 	gatewayAddress := getGatewayURL(gateway, defaultGateway, "", os.Getenv(openFaaSURLEnvironment))
 
 	if msg := checkTLSInsecure(gatewayAddress, tlsInsecure); len(msg) > 0 {
@@ -81,7 +82,7 @@ func runSecretApply(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get list of existing secrets from gateway to check if they exist
-	existingSecrets, err := client.GetSecretList(context.Background(), functionNamespace)
+	existingSecrets, err := client.GetSecretList(context.Background(), namespace)
 	if err != nil {
 		return fmt.Errorf("failed to get secret list: %w", err)
 	}
@@ -90,7 +91,7 @@ func runSecretApply(cmd *cobra.Command, args []string) error {
 	secretMap := make(map[string]bool)
 	for _, secret := range existingSecrets {
 		// Match by name and namespace
-		if secret.Namespace == functionNamespace {
+		if secret.Namespace == namespace {
 			secretMap[secret.Name] = true
 		}
 	}
@@ -130,7 +131,7 @@ func runSecretApply(cmd *cobra.Command, args []string) error {
 
 		secret := types.Secret{
 			Name:      secretName,
-			Namespace: functionNamespace,
+			Namespace: namespace,
 			Value:     secretValue,
 			RawValue:  fileData,
 		}
@@ -140,7 +141,7 @@ func runSecretApply(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Secret %s exists, deleting before recreating...\n", secretName)
 			deleteSecret := types.Secret{
 				Name:      secretName,
-				Namespace: functionNamespace,
+				Namespace: namespace,
 			}
 			err = client.RemoveSecret(context.Background(), deleteSecret)
 			if err != nil {
@@ -150,7 +151,7 @@ func runSecretApply(cmd *cobra.Command, args []string) error {
 		}
 
 		// Create the secret
-		fmt.Printf("Creating secret: %s.%s\n", secret.Name, functionNamespace)
+		fmt.Printf("Creating secret: %s.%s\n", secret.Name, namespace)
 		status, output := client.CreateSecret(context.Background(), secret)
 
 		if status == http.StatusConflict {

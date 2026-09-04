@@ -156,7 +156,7 @@ func runStoreDeploy(cmd *cobra.Command, args []string) error {
 		tlsInsecure,
 		item.ReadOnlyRootFilesystem,
 		token,
-		functionNamespace,
+		getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment)),
 		cpuRequest,
 		cpuLimit,
 		memoryRequest,
