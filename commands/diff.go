@@ -94,12 +94,6 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
-	functions, err := proxyClient.ListFunctions(context.Background(), namespace)
-	if err != nil {
-		return err
-	}
-
 	yamlFns := parsedServices.Functions
 
 	yamlMap := make(map[string]funcDiff)
@@ -130,27 +124,19 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	}
 
 	deployedMap := make(map[string]funcDiff)
-	for _, fn := range functions {
-		envMap := fn.EnvVars
-		if envMap == nil {
-			envMap = make(map[string]string)
+	ctx := context.Background()
+	for _, namespace := range namespacesForDiff(functionNamespace, parsedServices.Functions, os.Getenv(openFaaSNamespaceEnvironment)) {
+		deployed, err := proxyClient.ListFunctions(ctx, namespace)
+		if err != nil {
+			return err
 		}
 
-		fnDiff := funcDiff{
-			Image:                  fn.Image,
-			FProcess:               fn.EnvProcess,
-			Env:                    envMap,
-			Secrets:                fn.Secrets,
-			Constraints:            fn.Constraints,
-			Labels:                 mapFromPtr(fn.Labels),
-			Annotations:            mapFromPtr(fn.Annotations),
-			Limits:                 resourcesFromStatus(fn.Limits),
-			Requests:               resourcesFromStatus(fn.Requests),
-			ReadOnlyRootFilesystem: fn.ReadOnlyRootFilesystem,
-		}
-		deployedMap[diffKey(fn.Name, "")] = fnDiff
-		if fn.Namespace != "" {
-			deployedMap[diffKey(fn.Name, fn.Namespace)] = fnDiff
+		for _, fn := range deployed {
+			key := diffKey(fn.Name, namespace)
+			if _, ok := yamlMap[key]; !ok {
+				continue
+			}
+			deployedMap[key] = functionStatusToDiff(fn)
 		}
 	}
 
@@ -176,6 +162,26 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	}
 
 	return fmt.Errorf("differences found")
+}
+
+func functionStatusToDiff(fn types.FunctionStatus) funcDiff {
+	env := fn.EnvVars
+	if env == nil {
+		env = make(map[string]string)
+	}
+
+	return funcDiff{
+		Image:                  fn.Image,
+		FProcess:               fn.EnvProcess,
+		Env:                    env,
+		Secrets:                fn.Secrets,
+		Constraints:            fn.Constraints,
+		Labels:                 mapFromPtr(fn.Labels),
+		Annotations:            mapFromPtr(fn.Annotations),
+		Limits:                 resourcesFromStatus(fn.Limits),
+		Requests:               resourcesFromStatus(fn.Requests),
+		ReadOnlyRootFilesystem: fn.ReadOnlyRootFilesystem,
+	}
 }
 
 func buildDiffImageName(image string, handler string, tagMode schema.BuildFormat) (string, error) {
@@ -435,11 +441,19 @@ func sortedAttrKeys(m map[string]string) []string {
 	return keys
 }
 
-func namespaceForDiffKey(flagNamespace string, stackNamespace string) string {
-	if flagNamespace != "" {
-		return flagNamespace
+func namespacesForDiff(flagNamespace string, functions map[string]stack.Function, environmentNamespace string) []string {
+	namespaces := map[string]struct{}{}
+	for _, function := range functions {
+		namespace := getNamespace(flagNamespace, function.Namespace, environmentNamespace)
+		namespaces[namespace] = struct{}{}
 	}
-	return stackNamespace
+
+	result := make([]string, 0, len(namespaces))
+	for namespace := range namespaces {
+		result = append(result, namespace)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func diffKey(name string, namespace string) string {
