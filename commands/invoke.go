@@ -97,7 +97,7 @@ func runInvoke(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
-	functionNamespace = getNamespace(functionInvokeNamespace, stackNamespace)
+	functionNamespace = getNamespace(functionInvokeNamespace, stackNamespace, os.Getenv(openFaaSNamespaceEnvironment))
 
 	if missingSignFlag(sigHeader, key) {
 		return fmt.Errorf("signing requires both --sign <header-value> and --key <key-value>")
@@ -180,7 +180,7 @@ func runInvoke(cmd *cobra.Command, args []string) error {
 			}
 			req.Header = httpHeader
 
-			res, err = client.InvokeFunction(functionName, functionInvokeNamespace, invokeAsync, authenticate, req)
+			res, err = client.InvokeFunction(functionName, functionNamespace, invokeAsync, authenticate, req)
 			if err != nil {
 				return fmt.Errorf("failed to invoke function: %s", err)
 			}

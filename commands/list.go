@@ -77,7 +77,8 @@ func runList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	functions, err := proxyClient.ListFunctions(context.Background(), functionNamespace)
+	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
+	functions, err := proxyClient.ListFunctions(context.Background(), namespace)
 	if err != nil {
 		return err
 	}

@@ -357,6 +357,7 @@ $ uname -a | curl http://127.0.0.1:8080/function/nodejs-echo--data-binary @-
 * `OPENFAAS_TEMPLATE_URL` - to set the default URL to pull templates from
 * `OPENFAAS_PREFIX` - for use with `faas-cli new` - this can act in place of `--prefix`
 * `OPENFAAS_URL` - to override the default gateway URL
+* `OPENFAAS_NS` - to set the default function namespace
 * `OPENFAAS_REMOTE_BUILDER` - default value for `--remote-builder`
 * `OPENFAAS_PAYLOAD_SECRET` - default value for `--payload-secret`
 * `OPENFAAS_BUILDER_PUBLIC_KEY` - builder public key as a literal value, or a path to a file containing raw base64 or the JSON response from `/public-key`

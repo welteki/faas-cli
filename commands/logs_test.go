@@ -11,6 +11,7 @@ import (
 )
 
 func Test_logsCmdFlagParsing(t *testing.T) {
+	t.Setenv(openFaaSNamespaceEnvironment, "")
 	nowFunc = func() time.Time {
 		ts, _ := time.Parse(time.RFC3339, "2019-01-01T01:00:00Z")
 		return ts
@@ -41,6 +42,34 @@ func Test_logsCmdFlagParsing(t *testing.T) {
 			logRequest := logRequestFromFlags(functionLogsCmd, functionLogsCmd.Flags().Args())
 			if logRequest.String() != s.expected.String() {
 				t.Errorf("expected log request %s, got %s", s.expected, logRequest)
+			}
+		})
+	}
+}
+
+func TestLogsNamespacePrecedence(t *testing.T) {
+	t.Setenv(openFaaSNamespaceEnvironment, "environment")
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "environment default", args: []string{"echo"}, want: "environment"},
+		{name: "flag override", args: []string{"echo", "--namespace=flag"}, want: "flag"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			functionLogsCmd.ResetFlags()
+			initLogCmdFlags(functionLogsCmd)
+			if err := functionLogsCmd.ParseFlags(test.args); err != nil {
+				t.Fatal(err)
+			}
+
+			request := logRequestFromFlags(functionLogsCmd, functionLogsCmd.Flags().Args())
+			if request.Namespace != test.want {
+				t.Fatalf("want namespace %q, got %q", test.want, request.Namespace)
 			}
 		})
 	}

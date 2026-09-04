@@ -91,9 +91,10 @@ func preRunSecretCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runSecretCreate(cmd *cobra.Command, args []string) error {
+	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
 	secret := types.Secret{
 		Name:      args[0],
-		Namespace: functionNamespace,
+		Namespace: namespace,
 	}
 
 	switch {
@@ -146,7 +147,7 @@ func runSecretCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Creating secret: %s.%s\n", secret.Name, functionNamespace)
+	fmt.Printf("Creating secret: %s.%s\n", secret.Name, namespace)
 	status, output := client.CreateSecret(context.Background(), secret)
 	if status == http.StatusConflict && replaceSecret {
 		fmt.Printf("Secret %s already exists, updating...\n", secret.Name)

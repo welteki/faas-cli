@@ -1,6 +1,81 @@
 package commands
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/openfaas/go-sdk/stack"
+)
+
+func TestGetNamespacePrecedence(t *testing.T) {
+	tests := []struct {
+		name                 string
+		flagNamespace        string
+		stackNamespace       string
+		environmentNamespace string
+		want                 string
+	}{
+		{
+			name:                 "environment namespace is the default",
+			environmentNamespace: "environment",
+			want:                 "environment",
+		},
+		{
+			name:                 "stack namespace overrides environment",
+			stackNamespace:       "stack",
+			environmentNamespace: "environment",
+			want:                 "stack",
+		},
+		{
+			name:                 "flag overrides stack and environment",
+			flagNamespace:        "flag",
+			stackNamespace:       "stack",
+			environmentNamespace: "environment",
+			want:                 "flag",
+		},
+		{
+			name: "empty values retain the existing default",
+			want: defaultFunctionNamespace,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := getNamespace(test.flagNamespace, test.stackNamespace, test.environmentNamespace)
+			if got != test.want {
+				t.Fatalf("want namespace %q, got %q", test.want, got)
+			}
+		})
+	}
+}
+
+func TestGetNamespaceUsesSubstitutedStackNamespaceBeforeEnvironment(t *testing.T) {
+	t.Setenv("STACK_NAMESPACE", "substituted-stack")
+	path := filepath.Join(t.TempDir(), "stack.yaml")
+	contents := `version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  echo:
+    image: echo:latest
+    namespace: ${STACK_NAMESPACE}
+`
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	services, err := stack.ParseYAMLFile(path, "", "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := getNamespace("", services.Functions["echo"].Namespace, "environment")
+	if got != "substituted-stack" {
+		t.Fatalf("want substituted stack namespace, got %q", got)
+	}
+}
 
 func TestApplyRemoteBuilderEnvironmentUsesEnvFallbacks(t *testing.T) {
 	t.Setenv(remoteBuilderEnvironment, "http://builder.example.com")

@@ -83,14 +83,15 @@ func runDescribe(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
+	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
 
-	function, err := cliClient.GetFunctionInfo(ctx, functionName, functionNamespace)
+	function, err := cliClient.GetFunctionInfo(ctx, functionName, namespace)
 	if err != nil {
 		return err
 	}
 
 	//To get correct value for invocation count from /system/functions endpoint
-	functionList, err := cliClient.ListFunctions(ctx, functionNamespace)
+	functionList, err := cliClient.ListFunctions(ctx, namespace)
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func runDescribe(cmd *cobra.Command, args []string) error {
 		status = "Ready"
 	}
 
-	url, asyncURL := getFunctionURLs(gatewayAddress, functionName, functionNamespace)
+	url, asyncURL := getFunctionURLs(gatewayAddress, functionName, namespace)
 
 	funcDesc := schema.FunctionDescription{
 		FunctionStatus:  function,

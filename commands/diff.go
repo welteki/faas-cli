@@ -94,7 +94,8 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	functions, err := proxyClient.ListFunctions(context.Background(), functionNamespace)
+	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
+	functions, err := proxyClient.ListFunctions(context.Background(), namespace)
 	if err != nil {
 		return err
 	}
@@ -103,7 +104,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 
 	yamlMap := make(map[string]funcDiff)
 	for name, fn := range yamlFns {
-		key := diffKey(name, namespaceForDiffKey(functionNamespace, fn.Namespace))
+		key := diffKey(name, getNamespace(functionNamespace, fn.Namespace, os.Getenv(openFaaSNamespaceEnvironment)))
 
 		imageName, err := buildDiffImageName(fn.Image, fn.Handler, tagFormat)
 		if err != nil {

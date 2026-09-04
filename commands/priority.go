@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	openFaaSURLEnvironment      = "OPENFAAS_URL"
-	remoteBuilderEnvironment    = "OPENFAAS_REMOTE_BUILDER"
-	payloadSecretEnvironment    = "OPENFAAS_PAYLOAD_SECRET"
-	builderPublicKeyEnvironment = "OPENFAAS_BUILDER_PUBLIC_KEY"
-	templateURLEnvironment      = "OPENFAAS_TEMPLATE_URL"
-	templateStoreURLEnvironment = "OPENFAAS_TEMPLATE_STORE_URL"
-	defaultFunctionNamespace    = ""
+	openFaaSURLEnvironment       = "OPENFAAS_URL"
+	openFaaSNamespaceEnvironment = "OPENFAAS_NS"
+	remoteBuilderEnvironment     = "OPENFAAS_REMOTE_BUILDER"
+	payloadSecretEnvironment     = "OPENFAAS_PAYLOAD_SECRET"
+	builderPublicKeyEnvironment  = "OPENFAAS_BUILDER_PUBLIC_KEY"
+	templateURLEnvironment       = "OPENFAAS_TEMPLATE_URL"
+	templateStoreURLEnvironment  = "OPENFAAS_TEMPLATE_STORE_URL"
+	defaultFunctionNamespace     = ""
 )
 
 func getGatewayURL(argumentURL, defaultURL, yamlURL, environmentURL string) string {
@@ -64,7 +65,7 @@ func getTemplateStoreURL(argumentURL, environmentURL, defaultURL string) string 
 	}
 }
 
-func getNamespace(flagNamespace, stackNamespace string) string {
+func getNamespace(flagNamespace, stackNamespace, environmentNamespace string) string {
 	// If the namespace flag is passed use it
 	if len(flagNamespace) > 0 {
 		return flagNamespace
@@ -72,6 +73,9 @@ func getNamespace(flagNamespace, stackNamespace string) string {
 	// https://github.com/openfaas/faas-cli/issues/742#issuecomment-625746405
 	if len(stackNamespace) > 0 {
 		return stackNamespace
+	}
+	if len(environmentNamespace) > 0 {
+		return environmentNamespace
 	}
 
 	return defaultFunctionNamespace

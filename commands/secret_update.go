@@ -58,6 +58,7 @@ func preRunSecretUpdate(cmd *cobra.Command, args []string) error {
 }
 
 func runSecretUpdate(cmd *cobra.Command, args []string) error {
+	namespace := getNamespace(functionNamespace, "", os.Getenv(openFaaSNamespaceEnvironment))
 	gatewayAddress := getGatewayURL(gateway, defaultGateway, "", os.Getenv(openFaaSURLEnvironment))
 
 	if msg := checkTLSInsecure(gatewayAddress, tlsInsecure); len(msg) > 0 {
@@ -66,7 +67,7 @@ func runSecretUpdate(cmd *cobra.Command, args []string) error {
 
 	secret := types.Secret{
 		Name:      args[0],
-		Namespace: functionNamespace,
+		Namespace: namespace,
 	}
 
 	switch {
