@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/openfaas/faas-cli/schema"
 	"github.com/openfaas/faas-cli/test"
 	types "github.com/openfaas/faas-provider/types"
+	"github.com/openfaas/go-sdk/stack"
 )
 
 func Test_diff_no_changes(t *testing.T) {
@@ -123,6 +125,124 @@ functions:
 
 	if !strings.Contains(stdOut, "no differences found") {
 		t.Fatalf("Expected no differences, got:\n%s", stdOut)
+	}
+}
+
+func TestNamespacesForDiffPrecedence(t *testing.T) {
+	functions := map[string]stack.Function{
+		"first":  {Namespace: "stack-a"},
+		"second": {Namespace: "stack-b"},
+		"third":  {},
+	}
+
+	got := namespacesForDiff("", functions, "environment")
+	want := []string{"environment", "stack-a", "stack-b"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("want namespaces %v, got %v", want, got)
+	}
+
+	got = namespacesForDiff("flag", functions, "environment")
+	want = []string{"flag"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("want flag namespace %v, got %v", want, got)
+	}
+}
+
+func TestDiffDoesNotMatchDefaultFunctionFromAnotherNamespace(t *testing.T) {
+	t.Setenv(openFaaSNamespaceEnvironment, "")
+	yamlPath := filepath.Join(t.TempDir(), "stack.yaml")
+	yamlContent := `version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  echo:
+    image: ttl.sh/test/echo:latest
+  worker:
+    image: ttl.sh/test/worker:latest
+    namespace: team-a
+`
+	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := test.MockHttpServer(t, []test.Request{
+		{
+			Method:             http.MethodGet,
+			Uri:                "/system/functions",
+			ResponseStatusCode: http.StatusOK,
+			ResponseBody:       []types.FunctionStatus{},
+		},
+		{
+			Method:             http.MethodGet,
+			Uri:                "/system/functions?namespace=team-a",
+			ResponseStatusCode: http.StatusOK,
+			ResponseBody: []types.FunctionStatus{
+				{Name: "echo", Namespace: "team-a", Image: "ttl.sh/test/echo:latest"},
+				{Name: "worker", Namespace: "team-a", Image: "ttl.sh/test/worker:latest"},
+			},
+		},
+	})
+	defer s.Close()
+
+	resetForTest()
+	var executeErr error
+	stdOut := test.CaptureStdout(func() {
+		faasCmd.SetArgs([]string{"diff", "--yaml", yamlPath, "--gateway", s.URL})
+		executeErr = faasCmd.Execute()
+	})
+
+	if executeErr == nil || !strings.Contains(executeErr.Error(), "differences found") {
+		t.Fatalf("want missing default function to produce a difference, got: %v", executeErr)
+	}
+	if !strings.Contains(stdOut, "echo") || !strings.Contains(stdOut, "not deployed") {
+		t.Fatalf("want default namespace echo to be reported as not deployed, got:\n%s", stdOut)
+	}
+	if strings.Contains(stdOut, "worker.team-a") {
+		t.Fatalf("want matching namespaced worker to be omitted from diff, got:\n%s", stdOut)
+	}
+}
+
+func TestDiffUsesQueriedNamespaceWhenStatusOmitsNamespace(t *testing.T) {
+	t.Setenv(openFaaSNamespaceEnvironment, "")
+	yamlPath := filepath.Join(t.TempDir(), "stack.yaml")
+	yamlContent := `version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  worker:
+    image: ttl.sh/test/worker:latest
+    namespace: team-a
+`
+	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := test.MockHttpServer(t, []test.Request{
+		{
+			Method:             http.MethodGet,
+			Uri:                "/system/functions?namespace=team-a",
+			ResponseStatusCode: http.StatusOK,
+			ResponseBody: []types.FunctionStatus{
+				{Name: "worker", Image: "ttl.sh/test/worker:latest"},
+			},
+		},
+	})
+	defer s.Close()
+
+	resetForTest()
+	var executeErr error
+	stdOut := test.CaptureStdout(func() {
+		faasCmd.SetArgs([]string{"diff", "--yaml", yamlPath, "--gateway", s.URL})
+		executeErr = faasCmd.Execute()
+	})
+
+	if executeErr != nil {
+		t.Fatalf("want queried namespace to match stack function, got: %v\n%s", executeErr, stdOut)
+	}
+	if !strings.Contains(stdOut, "no differences found") {
+		t.Fatalf("want no differences, got:\n%s", stdOut)
 	}
 }
 
